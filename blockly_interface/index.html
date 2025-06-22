@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blockly Robot e-puck (Gerador de Comandos Avançados)</title>
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f0f4f8;
+      min-height: 100vh;
+      color: #2d3748;
+    }
+
+    #blocklyDiv {
+      height: 480px;
+      width: 90%;
+      max-width: 800px;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+      /* Removido: overflow: hidden; */ /* Esta linha foi removida */
+    }
+
+    pre {
+      background: #e2e8f0;
+      padding: 16px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      width: 90%;
+      max-width: 800px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+    }
+
+    h2 {
+      color: #2d3748;
+      margin-top: 30px;
+      font-size: 2.25rem;
+      font-weight: 700;
+    }
+    h3 {
+      color: #4a5568;
+      margin-top: 20px;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    button {
+      background-color: #4a5568;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      margin-top: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    button:hover {
+      background-color: #2d3748;
+      transform: translateY(-2px);
+    }
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .flex-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      #blocklyDiv, pre {
+        width: 95%;
+      }
+      h2 {
+        font-size: 1.75rem;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="flex-container">
+    <h2>Generador de Comandos de Texto para e-puck (Para o seu Compilador)</h2>
+
+    <div id="blocklyDiv"></div>
+
+    <xml id="toolbox" style="display: none">
+      <block type="iniciar"></block>
+      <category name="Movimento" colour="120">
+        <block type="avanzar"></block>
+        <block type="girar"></block>
+        <block type="esperar"></block>
+      </category>
+      <category name="Controlo" colour="160">
+        <block type="condicional_si"></block>
+        <block type="repetir_veces"></block>
+      </category>
+      <category name="Sensores" colour="330">
+        <block type="sensor_luz_valor"></block>
+        <block type="sensor_distancia_valor"></block>
+      </category>
+      <category name="Lógica" colour="210">
+        <block type="logica_comparacion"></block>
+        <block type="campo_numero"></block>
+      </category>
+      <category name="Fim do Programa" colour="290">
+        <block type="finalizar"></block>
+      </category>
+    </xml>
+
+    <button onclick="generarComandosTexto()">Gerar Lista de Comandos</button>
+
+    <h3>Lista de Comandos Gerada (para entrada.txt)</h3>
+    <pre id="codigoSalida"></pre>
+    <button onclick="copiarComandos()">Copiar Comandos</button>
+  </div>
+
+  <script>
+    // --- definicion de bloques (custom_blocks.js integrado) ---
+    Blockly.defineBlocksWithJsonArray([
+      {
+        "type": "iniciar",
+        "message0": "Iniciar Programa %1",
+        "args0": [
+          {
+            "type": "input_statement",
+            "name": "DO"
+          }
+        ],
+        "colour": 230,
+        "tooltip": "Ponto de início do programa do robô. Coloque as ações do robô dentro deste bloco."
+      },
+      {
+        "type": "avanzar",
+        "message0": "Avançar %1 ms a velocidade %2",
+        "args0": [
+          { "type": "field_number", "name": "TIEMPO", "value": 1000, "min": 0 },
+          { "type": "field_number", "name": "VELOCIDAD", "value": 3.0, "min": 0 }
+        ],
+        "previousStatement": true,
+        "nextStatement": true,
+        "colour": 120,
+        "tooltip": "Faz o robô avançar pela quantidade de milissegundos especificada e a uma velocidade determinada."
+      },
+      {
+        "type": "girar",
+        "message0": "Girar %1 a velocidade %2 por %3 ms",
+        "args0": [
+          {
+            "type": "field_dropdown",
+            "name": "DIRECCION",
+            "options": [["esquerda", "IZQUIERDA"], ["direita", "DERECHA"]]
+          },
+          { "type": "field_number", "name": "VELOCIDAD", "value": 2.0, "min": 0 },
+          { "type": "field_number", "name": "DURACION", "value": 1000, "min": 0 }
+        ],
+        "previousStatement": true,
+        "nextStatement": true,
+        "colour": 60,
+        "tooltip": "Faz o robô girar numa direção a uma velocidade e duração específicas."
+      },
+      {
+        "type": "esperar",
+        "message0": "Esperar %1 ms",
+        "args0": [{ "type": "field_number", "name": "TIEMPO", "value": 500, "min": 0 }],
+        "previousStatement": true,
+        "nextStatement": true,
+        "colour": 20,
+        "tooltip": "Faz o robô esperar durante a quantidade de milissegundos especificada."
+      },
+      {
+        "type": "finalizar",
+        "message0": "Finalizar",
+        "previousStatement": true,
+        "nextStatement": null,
+        "colour": 290,
+        "tooltip": "Marca o fim do programa do robô."
+      },
+      {
+        "type": "condicional_si",
+        "message0": "SE %1 ENTÃO %2 %3",
+        "args0": [
+          { "type": "input_value", "name": "CONDICION", "check": "Boolean" },
+          { "type": "input_dummy" },
+          { "type": "input_statement", "name": "DO" }
+        ],
+        "previousStatement": true,
+        "nextStatement": true,
+        "colour": 160,
+        "tooltip": "Executa as ações se a condição for verdadeira."
+      },
+      {
+        "type": "repetir_veces",
+        "message0": "REPETIR %1 VEZES %2 %3",
+        "args0": [
+          { "type": "field_number", "name": "VECES", "value": 3, "min": 0 },
+          { "type": "input_dummy" },
+          { "type": "input_statement", "name": "DO" }
+        ],
+        "previousStatement": true,
+        "nextStatement": true,
+        "colour": 160,
+        "tooltip": "Repete as ações um número específico de vezes."
+      },
+      {
+        "type": "sensor_luz_valor",
+        "message0": "VALOR SENSOR LUZ",
+        "output": "Number",
+        "colour": 330,
+        "tooltip": "Obtém o valor atual do sensor de luz do robô."
+      },
+      {
+        "type": "sensor_distancia_valor",
+        "message0": "VALOR SENSOR DISTANCIA",
+        "output": "Number",
+        "colour": 330,
+        "tooltip": "Obtém o valor atual do sensor de distância do robô."
+      },
+      {
+        "type": "logica_comparacion",
+        "message0": "%1 %2 %3",
+        "args0": [
+          { "type": "input_value", "name": "VALOR1" },
+          {
+            "type": "field_dropdown",
+            "name": "OPERADOR",
+            "options": [
+              ["=", "IGUAL"],
+              ["!=", "DIFERENTE"],
+              ["<", "MENOR"],
+              ["<=", "MENOR_IGUAL"],
+              [">", "MAIOR"],
+              [">=", "MAIOR_IGUAL"]
+            ]
+          },
+          { "type": "input_value", "name": "VALOR2" }
+        ],
+        "output": "Boolean",
+        "colour": 210,
+        "tooltip": "Compara dois valores."
+      },
+      {
+        "type": "campo_numero",
+        "message0": "%1",
+        "args0": [
+          {
+            "type": "field_number",
+            "name": "NUMERO",
+            "value": 0
+          }
+        ],
+        "output": "Number",
+        "colour": 210,
+        "tooltip": "Um valor numérico."
+      }
+    ]);
+
+    // --- Geradores de Texto para o seu Compilador (adaptação de generator.js) ---
+
+    
+    Blockly.JavaScript.INDENT = '    '; 
+
+    console.log("Geradores definidos. Blockly.JavaScript.forBlock['iniciar'] é:", Blockly.JavaScript.forBlock['iniciar']);
+    console.log("Blockly.JavaScript.INDENT é agora:", Blockly.JavaScript.INDENT);
+
+
+    // Gerador para o bloco 'iniciar'.
+    Blockly.JavaScript.forBlock['iniciar'] = function(block) {
+      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+      return `INICIAR\n${statements}`;
+    };
+
+    // Gerador para o bloco 'avanzar'.
+    Blockly.JavaScript.forBlock['avanzar'] = function(block) {
+      const tiempo = block.getFieldValue('TIEMPO');
+      const velocidad = block.getFieldValue('VELOCIDAD');
+      return `AVANZAR ${tiempo} ${velocidad}\n`;
+    };
+
+    // Gerador para o bloco 'girar'.
+    Blockly.JavaScript.forBlock['girar'] = function(block) {
+      const direccion = block.getFieldValue('DIRECCION').toUpperCase();
+      const velocidad = block.getFieldValue('VELOCIDAD');
+      const duracion = block.getFieldValue('DURACION');
+      return `GIRAR ${direccion} ${velocidad} ${duracion}\n`;
+    };
+
+    // Gerador para o bloco 'esperar'.
+    Blockly.JavaScript.forBlock['esperar'] = function(block) {
+      const tiempo = block.getFieldValue('TIEMPO');
+      return `ESPERAR ${tiempo}\n`;
+    };
+
+    // Gerador para o bloco 'finalizar'.
+    Blockly.JavaScript.forBlock['finalizar'] = function(block) {
+      return `FINALIZAR\n`;
+    };
+
+    // Gerador para o bloco 'condicional_si'.
+    Blockly.JavaScript.forBlock['condicional_si'] = function(block) {
+      const condition = Blockly.JavaScript.valueToCode(block, 'CONDICION', Blockly.JavaScript.ORDER_ATOMIC) || 'VERDADEIRO';
+      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+      const indentedStatements = Blockly.JavaScript.prefixLines(statements, Blockly.JavaScript.INDENT);
+
+      let code = `SI ${condition} ENTÃO\n`;
+      code += indentedStatements;
+      code += `FIM_SI\n`;
+      return code;
+    };
+
+    // Gerador para o bloco 'repetir_veces'.
+    Blockly.JavaScript.forBlock['repetir_veces'] = function(block) {
+      const times = block.getFieldValue('VECES');
+      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+      const indentedStatements = Blockly.JavaScript.prefixLines(statements, Blockly.JavaScript.INDENT);
+
+      let code = `REPETIR ${times} VEZES\n`;
+      code += indentedStatements;
+      code += `FIM_REPETIR\n`;
+      return code;
+    };
+
+    // Gerador para o bloco 'sensor_luz_valor'.
+    Blockly.JavaScript.forBlock['sensor_luz_valor'] = function(block) {
+      const code = 'SENSOR_LUZ';
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    // Gerador para o bloco 'sensor_distancia_valor'.
+    Blockly.JavaScript.forBlock['sensor_distancia_valor'] = function(block) {
+      const code = 'SENSOR_DISTANCIA';
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    // Gerador para o bloco 'logica_comparacion'.
+    Blockly.JavaScript.forBlock['logica_comparacion'] = function(block) {
+      const value1 = Blockly.JavaScript.valueToCode(block, 'VALOR1', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const operator = block.getFieldValue('OPERADOR');
+      const value2 = Blockly.JavaScript.valueToCode(block, 'VALOR2', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      
+      const code = `COMPARAR ${value1} ${operator} ${value2}`;
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    // Gerador para o bloco 'campo_numero'.
+    Blockly.JavaScript.forBlock['campo_numero'] = function(block) {
+      const number = block.getFieldValue('NUMERO');
+      const code = String(number);
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    // --- Configuração e Inicialização do Workspace de Blockly ---
+
+    const workspace = Blockly.inject('blocklyDiv', {
+      toolbox: document.getElementById('toolbox'),
+      scrollbars: true,
+      zoom: {
+        controls: true,
+        wheel: true,
+        startScale: 1.0,
+        maxScale: 3,
+        minScale: 0.3,
+        scaleSpeed: 1.2
+      }
+    });
+
+    
+    const iniciarBlock = workspace.newBlock('iniciar');
+    iniciarBlock.initSvg();
+    iniciarBlock.render();
+    iniciarBlock.moveBy(20, 20);
+
+    /**
+     * Função para gerar o texto de comandos para o seu compilador Python.
+     */
+    function generarComandosTexto() {
+      // Gera a lista de comandos de texto a partir dos blocos na área de trabalho
+      const commandsText = Blockly.JavaScript.workspaceToCode(workspace);
+      // Mostra os comandos gerados na área de pré-formato na página
+      document.getElementById('codigoSalida').textContent = commandsText;
+
+      console.log("lista de comandos");
+    }
+
+    /**
+     * Função para copiar os comandos gerados para a área de transferência.
+     */
+    function copiarComandos() {
+      const commandsText = document.getElementById('codigoSalida').textContent;
+      if (commandsText) {
+        const textarea = document.createElement('textarea');
+        textarea.value = commandsText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          console.log("Comandos copiados para a área de transferência.");
+        } catch (err) {
+          console.error("Erro ao copiar comandos:", err);
+        } finally {
+          document.body.removeChild(textarea);
+        }
+      } else {
+        console.log("Não há comandos para copiar.");
+      }
+    }
+  </script>
+</body>
+</html>
