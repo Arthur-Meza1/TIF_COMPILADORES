@@ -85,6 +85,16 @@
             width: 100%;
         }
 
+        #statusMessage {
+            margin-top: 15px;
+            font-weight: 600;
+            color: #38a169; /* Green for success */
+        }
+        #statusMessage.error {
+            color: #e53e3e; /* Red for error */
+        }
+
+
         @media (max-width: 768px) {
             #blocklyDiv, pre {
                 width: 95%;
@@ -131,13 +141,9 @@
             </category>
         </xml>
 
-        <button onclick="generarComandosTexto()">Generar Lista de Comandos</button>
-
-        <h3>Lista de Comandos Generada (para entrada.txt)</h3>
-        <pre id="codigoSalida"></pre>
-        <button onclick="copiarComandos()">Copiar Comandos</button>
+        <button onclick="automatizarTodo()">Automatizar Todo</button>
+        <div id="statusMessage"></div>
     </div>
-
     <script>
         // --- definición de bloques ---
         Blockly.defineBlocksWithJsonArray([
@@ -306,7 +312,7 @@
             }
         ]);
 
-        // --- Generadores de Texto para tu Compilador ---
+        //  Generadores de Texto para tu Compilador 
 
         Blockly.JavaScript.INDENT = '    '; 
 
@@ -411,31 +417,42 @@
         iniciarBlock.render();
         iniciarBlock.moveBy(20, 20);
 
-        function generarComandosTexto() {
-            const commandsText = Blockly.JavaScript.workspaceToCode(workspace);
-            document.getElementById('codigoSalida').textContent = commandsText;
 
-            console.log("Comandos generados para entrada.txt:");
-            console.log(commandsText);
-        }
+        
 
-        function copiarComandos() {
-            const commandsText = document.getElementById('codigoSalida').textContent;
-            if (commandsText) {
-                const textarea = document.createElement('textarea');
-                textarea.value = commandsText;
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    console.log("Comandos copiados al portapapeles.");
-                } catch (err) {
-                    console.error("Error al copiar comandos:", err);
-                } finally {
-                    document.body.removeChild(textarea);
+        // --- Función para automatizar todo ---
+        async function automatizarTodo() {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = "Generando código...";
+            statusMessage.className = ""; // Reset class
+
+            const blocklyCode = Blockly.JavaScript.workspaceToCode(workspace);
+
+            try {
+                // Envía el código de Blockly al servidor para que lo guarde y compile
+                const response = await fetch('http://127.0.0.1:5000/save_and_compile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code: blocklyCode }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusMessage.textContent = result.message + " ¡Reinicia la simulación en Webots!";
+                    statusMessage.className = "success";
+                    console.log("Automatización exitosa:", result.message);
+                } else {
+                    statusMessage.textContent = "Error: " + result.message;
+                    statusMessage.className = "error";
+                    console.error("Error en la automatización:", result.message);
                 }
-            } else {
-                console.log("No hay comandos para copiar.");
+            } catch (error) {
+                statusMessage.textContent = "Error de conexión con el servidor. Asegúrate de que 'server.py' está corriendo.";
+                statusMessage.className = "error";
+                console.error("Error de fetch:", error);
             }
         }
     </script>
